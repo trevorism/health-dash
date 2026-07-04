@@ -2,21 +2,35 @@
 import MenuBar from '@trevorism/ui-header-bar'
 import HealthTile from './components/HealthTile.vue'
 import axios from 'axios'
-import { onMounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { useCookies } from 'vue3-cookies'
+
+// Poll cadence for the glance view. The backend already holds current snapshots
+// (push providers via webhook, polling providers on read), so this just re-reads.
+const POLL_INTERVAL_MS = 15 * 1000
 
 const { cookies } = useCookies()
 const authenticated = ref(!!cookies.get('user_name'))
 const panels = ref([])
+let pollTimer = null
 
-onMounted(async () => {
-  if (!authenticated.value) return
+async function loadHealth() {
   try {
     const { data } = await axios.get('api/health')
     panels.value = data
   } catch (e) {
-    panels.value = []
+    // Leave the last-known panels in place on a transient error.
   }
+}
+
+onMounted(() => {
+  if (!authenticated.value) return
+  loadHealth()
+  pollTimer = setInterval(loadHealth, POLL_INTERVAL_MS)
+})
+
+onUnmounted(() => {
+  if (pollTimer) clearInterval(pollTimer)
 })
 </script>
 
