@@ -1,0 +1,8 @@
+runtime: java25
+service: health-dash
+entrypoint: java -jar health-dash-all.jar
+handlers:
+  - url: /.*
+    secure: always
+    redirect_http_response_code: 301
+    script: auto
