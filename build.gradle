@@ -17,14 +17,14 @@ buildscript {
     }
     dependencies {
         classpath 'com.google.cloud.tools:appengine-gradle-plugin:2.8.7'
-        classpath 'com.trevorism:gradle-acceptance-plugin:2.8.2'
+        classpath 'com.trevorism:gradle-acceptance-plugin:3.0.0'
     }
 }
 
 plugins {
     id("groovy")
     id("com.gradleup.shadow") version "9.4.1"
-    id("io.micronaut.application") version "5.0.0"
+    id("io.micronaut.application") version "5.0.2"
     id("com.github.node-gradle.node") version "7.1.0"
     id("jacoco")
 }
@@ -59,6 +59,10 @@ dependencies {
     }
 
     runtimeOnly("ch.qos.logback:logback-classic")
+
+    implementation 'com.trevorism:micronaut-utility-beans:2.0.0'
+    implementation 'com.trevorism:event-client:0.1.1'
+    implementation 'com.google.code.gson:gson:2.14.0'
 
     testImplementation 'com.trevorism:test-result-events:0.3.0'
     acceptanceImplementation 'io.cucumber:cucumber-groovy:6.10.4'
