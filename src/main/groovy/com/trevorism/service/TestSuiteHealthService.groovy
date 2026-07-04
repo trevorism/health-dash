@@ -6,14 +6,11 @@ import com.trevorism.https.SecureHttpClient
 import com.trevorism.model.HealthPanel
 import com.trevorism.model.TestSuite
 
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
-
+/**
+ * Historical provider: reads the TestSuite datastore kind on demand and summarizes pass/fail.
+ */
 @jakarta.inject.Singleton
-class TestSuiteHealthService {
-
-    private static final Logger log = LoggerFactory.getLogger(TestSuiteHealthService)
-
+class TestSuiteHealthService extends PollingHealthProvider {
 
     private Repository<TestSuite> testSuiteRepository
 
@@ -21,28 +18,29 @@ class TestSuiteHealthService {
         testSuiteRepository = new FastDatastoreRepository<>(TestSuite, httpClient)
     }
 
-    HealthPanel getHealth() {
-        try {
-            List<TestSuite> suites = testSuiteRepository.list()
+    @Override
+    String getKey() {
+        return "testsuite"
+    }
 
-            int total = suites.size()
-            int passing = suites.count { it.lastRunSuccess } as int
-            String status = total == 0 ? HealthPanel.STATUS_UNKNOWN : (passing == total ? HealthPanel.STATUS_OK : HealthPanel.STATUS_ERROR)
+    @Override
+    String getTitle() {
+        return "Test Suites"
+    }
 
-            return new HealthPanel(
-                    key: "testsuite",
-                    title: "Test Suites",
-                    status: status,
-                    headline: "${passing}/${total} suites passing"
-            )
-        } catch (Exception e) {
-            log.error("Unable to fetch test suite health", e)
-            return new HealthPanel(
-                    key: "testsuite",
-                    title: "Test Suites",
-                    status: HealthPanel.STATUS_UNKNOWN,
-                    headline: "Unavailable"
-            )
-        }
+    @Override
+    protected HealthPanel load() {
+        List<TestSuite> suites = testSuiteRepository.list()
+
+        int total = suites.size()
+        int passing = suites.count { it.lastRunSuccess } as int
+        String status = total == 0 ? HealthPanel.STATUS_UNKNOWN : (passing == total ? HealthPanel.STATUS_OK : HealthPanel.STATUS_ERROR)
+
+        return new HealthPanel(
+                key: getKey(),
+                title: getTitle(),
+                status: status,
+                headline: "${passing}/${total} suites passing"
+        )
     }
 }

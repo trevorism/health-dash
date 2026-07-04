@@ -1,47 +1,38 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import axios from 'axios'
+import { computed } from 'vue'
 
-// endpoint is the /api/health/... path for one provider (e.g. 'api/health/testsuite')
+// panel is one HealthPanel from GET /api/health:
+// { key, title, status, headline, mode, lastUpdated }
 const props = defineProps({
-  endpoint: { type: String, required: true }
+  panel: { type: Object, required: true }
 })
-
-const panel = ref(null)
-const loading = ref(true)
-const failed = ref(false)
 
 const STATUS = {
   OK: { icon: 'check_circle', color: 'success' },
-  WARN: { icon: 'warning', color: 'warning' },
+  WARNING: { icon: 'warning', color: 'warning' },
   ERROR: { icon: 'cancel', color: 'danger' },
   UNKNOWN: { icon: 'help', color: 'secondary' }
 }
 
-const meta = computed(() => STATUS[panel.value?.status] || STATUS.UNKNOWN)
-
-onMounted(async () => {
-  try {
-    const { data } = await axios.get(props.endpoint)
-    panel.value = data
-  } catch (e) {
-    failed.value = true
-  } finally {
-    loading.value = false
-  }
-})
+const meta = computed(() => STATUS[props.panel.status] || STATUS.UNKNOWN)
+const isRealtime = computed(() => props.panel.mode === 'realtime')
+const updated = computed(() =>
+  props.panel.lastUpdated ? new Date(props.panel.lastUpdated).toLocaleTimeString() : ''
+)
 </script>
 
 <template>
   <va-card class="health-tile">
     <va-card-title>
       <va-icon :name="meta.icon" :color="meta.color" size="large" class="mr-2" />
-      {{ panel?.title || 'Loading…' }}
+      {{ panel.title }}
+      <va-chip v-if="isRealtime" size="small" color="info" class="ml-auto">LIVE</va-chip>
     </va-card-title>
     <va-card-content>
-      <span v-if="loading">Loading…</span>
-      <span v-else-if="failed">Unavailable</span>
-      <span v-else class="text-lg">{{ panel.headline }}</span>
+      <span class="text-lg">{{ panel.headline }}</span>
+      <div v-if="updated" class="updated">
+        {{ isRealtime ? 'updated' : 'as of' }} {{ updated }}
+      </div>
     </va-card-content>
   </va-card>
 </template>
@@ -49,5 +40,10 @@ onMounted(async () => {
 <style scoped>
 .health-tile {
   border: 1px solid var(--va-background-border);
+}
+.updated {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--va-secondary);
 }
 </style>
