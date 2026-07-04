@@ -36,11 +36,15 @@ class TestSuiteHealthService extends PollingHealthProvider {
         int passing = suites.count { it.lastRunSuccess } as int
         String status = total == 0 ? HealthPanel.STATUS_UNKNOWN : (passing == total ? HealthPanel.STATUS_OK : HealthPanel.STATUS_ERROR)
 
+        // Failing suites first so the drill-down leads with what needs attention.
+        List<TestSuite> ordered = suites.sort { a, b -> (a.lastRunSuccess ? 1 : 0) <=> (b.lastRunSuccess ? 1 : 0) }
+
         return new HealthPanel(
                 key: getKey(),
                 title: getTitle(),
                 status: status,
-                headline: "${passing}/${total} suites passing"
+                headline: "${passing}/${total} suites passing",
+                details: [suites: ordered]
         )
     }
 }

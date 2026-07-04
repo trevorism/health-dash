@@ -7,6 +7,8 @@ const props = defineProps({
   panel: { type: Object, required: true }
 })
 
+const emit = defineEmits(['select'])
+
 const STATUS = {
   OK: { icon: 'check_circle', color: 'success' },
   WARNING: { icon: 'warning', color: 'warning' },
@@ -22,7 +24,7 @@ const updated = computed(() =>
 </script>
 
 <template>
-  <va-card class="health-tile">
+  <va-card class="health-tile" @click="emit('select', panel)">
     <va-card-title>
       <va-icon :name="meta.icon" :color="meta.color" size="large" class="mr-2" />
       {{ panel.title }}
@@ -40,6 +42,10 @@ const updated = computed(() =>
 <style scoped>
 .health-tile {
   border: 1px solid var(--va-background-border);
+  cursor: pointer;
+}
+.health-tile:hover {
+  border-color: var(--va-primary);
 }
 .updated {
   margin-top: 0.5rem;

@@ -1,6 +1,7 @@
 <script setup>
 import MenuBar from '@trevorism/ui-header-bar'
 import HealthTile from './components/HealthTile.vue'
+import PanelDetail from './components/PanelDetail.vue'
 import axios from 'axios'
 import { onMounted, onUnmounted, ref } from 'vue'
 import { useCookies } from 'vue3-cookies'
@@ -12,7 +13,14 @@ const POLL_INTERVAL_MS = 15 * 1000
 const { cookies } = useCookies()
 const authenticated = ref(!!cookies.get('user_name'))
 const panels = ref([])
+const selectedPanel = ref(null)
+const showDetail = ref(false)
 let pollTimer = null
+
+function openDetail(panel) {
+  selectedPanel.value = panel
+  showDetail.value = true
+}
 
 async function loadHealth() {
   try {
@@ -43,9 +51,21 @@ onUnmounted(() => {
     </div>
 
     <div v-if="authenticated" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      <health-tile v-for="panel in panels" :key="panel.key" :panel="panel"></health-tile>
+      <health-tile
+        v-for="panel in panels"
+        :key="panel.key"
+        :panel="panel"
+        @select="openDetail"
+      ></health-tile>
     </div>
     <div v-else class="empty-state">Please log in to view system health.</div>
+
+    <va-modal v-model="showDetail" size="large" hide-default-actions close-button>
+      <template #header>
+        <h2 class="text-xl font-bold">{{ selectedPanel?.title }}</h2>
+      </template>
+      <panel-detail v-if="selectedPanel" :panel="selectedPanel"></panel-detail>
+    </va-modal>
   </div>
 </template>
 
