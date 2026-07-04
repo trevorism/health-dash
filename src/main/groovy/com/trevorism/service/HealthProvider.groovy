@@ -22,4 +22,9 @@ interface HealthProvider {
 
     /** The current at-a-glance summary (and, for drill-down, the details) for this service. */
     HealthPanel getHealth()
+
+    /** When true, only admins may see this panel; non-admins never receive it. */
+    default boolean adminOnly() {
+        return false
+    }
 }
