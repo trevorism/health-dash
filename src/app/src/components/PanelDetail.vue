@@ -1,8 +1,6 @@
 <script setup>
 import { computed } from 'vue'
 
-// panel is a full HealthPanel including its `details` map, e.g.
-// { suites: [...] } | { errors: [...] } | { topics: [...], subscriptions: [...] }
 const props = defineProps({
   panel: { type: Object, required: true }
 })

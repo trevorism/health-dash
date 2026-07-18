@@ -15,6 +15,9 @@ const authenticated = ref(!!cookies.get('user_name'))
 const panels = ref([])
 const selectedPanel = ref(null)
 const showDetail = ref(false)
+// True until the first health read resolves, so we can show a spinner instead of
+// an empty grid on initial load. Subsequent polls keep the last-known panels.
+const loading = ref(true)
 let pollTimer = null
 
 function openDetail(panel) {
@@ -28,6 +31,8 @@ async function loadHealth() {
     panels.value = data
   } catch (e) {
     // Leave the last-known panels in place on a transient error.
+  } finally {
+    loading.value = false
   }
 }
 
@@ -50,7 +55,12 @@ onUnmounted(() => {
       <p class="meta">At-a-glance status across the platform's services.</p>
     </div>
 
-    <div v-if="authenticated" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div v-if="!authenticated" class="empty-state">Please log in to view system health.</div>
+    <div v-else-if="loading && !panels.length" class="loading-state">
+      <va-progress-circle indeterminate />
+      <span>Loading system health…</span>
+    </div>
+    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       <health-tile
         v-for="panel in panels"
         :key="panel.key"
@@ -58,7 +68,6 @@ onUnmounted(() => {
         @select="openDetail"
       ></health-tile>
     </div>
-    <div v-else class="empty-state">Please log in to view system health.</div>
 
     <va-modal v-model="showDetail" size="large" hide-default-actions close-button>
       <template #header>
@@ -74,6 +83,13 @@ onUnmounted(() => {
   color: var(--va-secondary);
 }
 .empty-state {
+  padding: 2rem 0;
+  color: var(--va-secondary);
+}
+.loading-state {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   padding: 2rem 0;
   color: var(--va-secondary);
 }
