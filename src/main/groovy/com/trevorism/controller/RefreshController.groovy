@@ -34,7 +34,7 @@ class RefreshController {
     HttpResponse refresh(@CookieValue("refresh_token") @Nullable String refreshToken,
                          @CookieValue("user_name") @Nullable String userName) {
         if (!refreshToken) {
-            return HttpResponse.unauthorized()
+            return HttpResponse.unauthorized().cookies(clearedCookies())
         }
 
         String token = userSessionService.redeemRefreshToken(refreshToken)

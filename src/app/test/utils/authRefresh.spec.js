@@ -8,10 +8,23 @@ vi.mock('axios', () => {
   return { default: axiosFn }
 })
 
-import axios from 'axios'
-import { installAuthRefresh, startProactiveRefresh } from '../../src/utils/authRefresh'
-
 const REFRESH_URL = '/api/refresh/'
+
+// authRefresh keeps module-level state (the single-flight refresh promise and the
+// redirect guard), so each test re-imports a fresh module. resetModules also gives
+// a fresh axios mock, which we re-import alongside so both share the same instance.
+let axios
+let installAuthRefresh
+let startProactiveRefresh
+
+async function loadModule() {
+  vi.resetModules()
+  axios = (await import('axios')).default
+  ;({ installAuthRefresh, startProactiveRefresh } = await import('../../src/utils/authRefresh'))
+  // The axios mock is memoized across resetModules, so wipe its call history to
+  // isolate each test (module-level state in authRefresh is reset by resetModules).
+  vi.clearAllMocks()
+}
 
 function clearCookies() {
   document.cookie.split(';').forEach((c) => {
@@ -27,8 +40,8 @@ function getRejectionHandler() {
 }
 
 describe('installAuthRefresh', () => {
-  beforeEach(() => {
-    vi.resetAllMocks()
+  beforeEach(async () => {
+    await loadModule()
     clearCookies()
     // authRefresh redirects via window.location.assign on refresh failure.
     Object.defineProperty(window, 'location', {
@@ -75,13 +88,32 @@ describe('installAuthRefresh', () => {
     expect(axios.post).not.toHaveBeenCalled()
   })
 
-  it('redirects home when the refresh itself fails', async () => {
+  it('redirects to login (not the dashboard) when the refresh itself fails', async () => {
     axios.post.mockRejectedValue(new Error('refresh boom'))
     const onRejected = getRejectionHandler()
     const error = { response: { status: 401 }, config: { url: '/api/health' } }
 
     await expect(onRejected(error)).rejects.toBe(error)
-    expect(window.location.assign).toHaveBeenCalledWith('/')
+    expect(window.location.assign).toHaveBeenCalledTimes(1)
+    const target = window.location.assign.mock.calls[0][0]
+    expect(target).toContain('https://login.auth.trevorism.com')
+    expect(target).toContain('return_url=')
+    // The stale identity cookie is dropped so a bounce-back can't re-loop.
+    expect(document.cookie).not.toContain('user_name')
+  })
+
+  it('does not fire a second navigation for concurrent failed refreshes', async () => {
+    axios.post.mockRejectedValue(new Error('refresh boom'))
+    const onRejected = getRejectionHandler()
+
+    await expect(
+      onRejected({ response: { status: 401 }, config: { url: '/api/a' } })
+    ).rejects.toBeDefined()
+    await expect(
+      onRejected({ response: { status: 401 }, config: { url: '/api/b' } })
+    ).rejects.toBeDefined()
+
+    expect(window.location.assign).toHaveBeenCalledTimes(1)
   })
 
   it('shares a single in-flight refresh across concurrent 401s', async () => {
@@ -100,8 +132,8 @@ describe('installAuthRefresh', () => {
 })
 
 describe('startProactiveRefresh', () => {
-  beforeEach(() => {
-    vi.resetAllMocks()
+  beforeEach(async () => {
+    await loadModule()
     clearCookies()
   })
 
