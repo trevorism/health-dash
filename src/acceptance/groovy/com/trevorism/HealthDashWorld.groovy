@@ -14,7 +14,7 @@ import com.trevorism.https.SecureHttpClient
  */
 class HealthDashWorld {
 
-    static final String BASE_URL = "https://health-dash.testing.trevorism.com"
+    static final String BASE_URL = System.getenv("ACCEPTANCE_BASE_URL") ?: "https://health-dash.testing.trevorism.com"
 
     private final Gson gson = new Gson()
     private final SecureHttpClient authClient = new AppClientSecureHttpClient()
