@@ -31,9 +31,14 @@ class HealthSubscriptionRegistrar {
     @EventListener
     void onStartup(ServerStartupEvent event) {
         providers.each { provider ->
+            String subscriptionName = "health-dash-${provider.getTopic()}"
             try {
+                if (subscriptionExists(subscriptionName)) {
+                    log.info("Subscription '${subscriptionName}' already registered; skipping creation")
+                    return
+                }
                 EventSubscription subscription = new EventSubscription()
-                subscription.name = "health-dash-${provider.getTopic()}"
+                subscription.name = subscriptionName
                 subscription.topic = provider.getTopic()
                 subscription.url = "${BASE_URL}/api/health/event/${provider.getTopic()}"
                 channelClient.createSubscription(subscription)
@@ -41,6 +46,14 @@ class HealthSubscriptionRegistrar {
             } catch (Exception e) {
                 log.warn("Could not register subscription for topic '${provider.getTopic()}' (may already exist): ${e.message}")
             }
+        }
+    }
+
+    private boolean subscriptionExists(String subscriptionName) {
+        try {
+            return channelClient.getSubscription(subscriptionName) != null
+        } catch (Exception ignored) {
+            return false
         }
     }
 }
