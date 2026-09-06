@@ -47,6 +47,11 @@ function mountApp() {
   return wrapper
 }
 
+function unmountApp(wrapper) {
+  mounted.splice(mounted.indexOf(wrapper), 1)
+  wrapper.unmount()
+}
+
 function signIn() {
   auth.session.authenticated = true
 }
@@ -146,6 +151,31 @@ describe('App', () => {
     expect(get).toHaveBeenCalledTimes(callsWhileSignedIn)
   })
 
+  it('drops a health read that lands after the session ended, rather than flashing it on the next sign in', async () => {
+    let resolveRead
+    get.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveRead = resolve
+      })
+    )
+    signIn()
+    const wrapper = mountApp()
+    await flushPromises()
+
+    auth.session.authenticated = false
+    await flushPromises()
+
+    resolveRead({ data: [{ key: 'data' }, { key: 'auth' }] })
+    await flushPromises()
+
+    get.mockReturnValueOnce(new Promise(() => {}))
+    signIn()
+    await flushPromises()
+
+    expect(wrapper.findAll('.tile')).toHaveLength(0)
+    expect(wrapper.text()).toContain('Loading system health')
+  })
+
   it('keeps the last known panels when a poll fails', async () => {
     signIn()
     const wrapper = mountApp()
@@ -163,7 +193,7 @@ describe('App', () => {
     await flushPromises()
     const callsWhileMounted = get.mock.calls.length
 
-    wrapper.unmount()
+    unmountApp(wrapper)
     await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS * 3)
 
     expect(get).toHaveBeenCalledTimes(callsWhileMounted)

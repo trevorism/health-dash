@@ -57,6 +57,9 @@ class HealthDashWorld {
         }
     }
 
+    static final int CONNECT_TIMEOUT_MS = 10_000
+    static final int READ_TIMEOUT_MS = 30_000
+
     int status
     String location
 
@@ -64,6 +67,8 @@ class HealthDashWorld {
         HttpURLConnection connection = new URL("${BASE_URL}/${path}").openConnection() as HttpURLConnection
         connection.instanceFollowRedirects = false
         connection.requestMethod = method
+        connection.connectTimeout = CONNECT_TIMEOUT_MS
+        connection.readTimeout = READ_TIMEOUT_MS
         return connection
     }
 

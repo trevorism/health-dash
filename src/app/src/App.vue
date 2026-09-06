@@ -25,8 +25,14 @@ function openDetail(panel) {
 }
 
 async function loadHealth() {
+  if (!isAuthenticated.value) {
+    return
+  }
   try {
     const { data } = await axios.get('/api/health')
+    if (!isAuthenticated.value) {
+      return
+    }
     panels.value = data
   } catch (e) {
     // Leave the last-known panels in place on a transient error.
