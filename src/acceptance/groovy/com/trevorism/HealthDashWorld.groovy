@@ -56,4 +56,37 @@ class HealthDashWorld {
             body = null
         }
     }
+
+    int status
+    String location
+
+    private HttpURLConnection open(String path, String method) {
+        HttpURLConnection connection = new URL("${BASE_URL}/${path}").openConnection() as HttpURLConnection
+        connection.instanceFollowRedirects = false
+        connection.requestMethod = method
+        return connection
+    }
+
+    /**
+     * Posts with no body under a caller-chosen content type. A browser labels a bodyless post
+     * form-urlencoded, and an endpoint that only consumes JSON answers 415 before the handler
+     * runs, which is invisible to a suite that always sends JSON.
+     */
+    void anonPostAs(String path, String contentType) {
+        HttpURLConnection connection = open(path, "POST")
+        connection.setRequestProperty("Content-Type", contentType)
+        connection.setRequestProperty("Content-Length", "0")
+        connection.doOutput = true
+        connection.outputStream.withCloseable { it.write(new byte[0]) }
+        status = connection.responseCode
+        body = status < 400 ? connection.inputStream.text : null
+        connection.disconnect()
+    }
+
+    void anonGetWithoutFollowing(String path) {
+        HttpURLConnection connection = open(path, "GET")
+        status = connection.responseCode
+        location = connection.getHeaderField("Location")
+        connection.disconnect()
+    }
 }
