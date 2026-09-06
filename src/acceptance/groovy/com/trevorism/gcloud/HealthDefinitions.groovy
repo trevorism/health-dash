@@ -25,6 +25,29 @@ Then(~/^the request is rejected$/) { ->
     assert rejected
 }
 
+When(~/^I POST "(.*)" as "(.*)"$/) { String path, String contentType ->
+    anonPostAs(path, contentType)
+}
+
+When(~/^I GET "(.*)" without following redirects$/) { String path ->
+    anonGetWithoutFollowing(path)
+}
+
+Then(~/^the response status is (\d+)$/) { Integer expected ->
+    assert status == expected, "expected ${expected} but got ${status}"
+}
+
+Then(~/^the response body reports nobody is signed in$/) { ->
+    assert body?.contains('"authenticated":false'), "unexpected session body: ${body}"
+}
+
+Then(~/^the response redirects to the login application with a callback on this host$/) { ->
+    assert status == 302, "expected a 302 but got ${status}"
+    assert location?.startsWith("https://login.auth.trevorism.com/authorize"), location
+    assert location.contains(URLEncoder.encode("${HealthDashWorld.BASE_URL}/api/auth/callback", "UTF-8")), location
+    assert location.contains("state="), location
+}
+
 When(~/^I request all health panels as an authenticated user$/) { ->
     requestAllPanels()
 }

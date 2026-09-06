@@ -1,17 +1,16 @@
 <script setup>
-import MenuBar from '@trevorism/ui-header-bar'
+import { MenuBar } from '@trevorism/ui-header-bar'
+import { useAuth } from '@trevorism/ui-auth'
 import HealthTile from './components/HealthTile.vue'
 import PanelDetail from './components/PanelDetail.vue'
 import axios from 'axios'
-import { onMounted, onUnmounted, ref } from 'vue'
-import { useCookies } from 'vue3-cookies'
+import { onUnmounted, ref, watch } from 'vue'
 
 // Poll cadence for the glance view. The backend already holds current snapshots
 // (push providers via webhook, polling providers on read), so this just re-reads.
 const POLL_INTERVAL_MS = 15 * 1000
 
-const { cookies } = useCookies()
-const authenticated = ref(!!cookies.get('user_name'))
+const { isAuthenticated, loading: sessionLoading, login } = useAuth()
 const panels = ref([])
 const selectedPanel = ref(null)
 const showDetail = ref(false)
@@ -26,8 +25,14 @@ function openDetail(panel) {
 }
 
 async function loadHealth() {
+  if (!isAuthenticated.value) {
+    return
+  }
   try {
-    const { data } = await axios.get('api/health')
+    const { data } = await axios.get('/api/health')
+    if (!isAuthenticated.value) {
+      return
+    }
     panels.value = data
   } catch (e) {
     // Leave the last-known panels in place on a transient error.
@@ -36,15 +41,31 @@ async function loadHealth() {
   }
 }
 
-onMounted(() => {
-  if (!authenticated.value) return
-  loadHealth()
-  pollTimer = setInterval(loadHealth, POLL_INTERVAL_MS)
-})
+function stopPolling() {
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
+}
 
-onUnmounted(() => {
-  if (pollTimer) clearInterval(pollTimer)
-})
+// Polling follows the session rather than the mount, so signing in starts the
+// dashboard and a session ending stops it hammering an endpoint that now 401s.
+watch(
+  isAuthenticated,
+  (signedIn) => {
+    stopPolling()
+    if (!signedIn) {
+      panels.value = []
+      return
+    }
+    loading.value = true
+    loadHealth()
+    pollTimer = setInterval(loadHealth, POLL_INTERVAL_MS)
+  },
+  { immediate: true }
+)
+
+onUnmounted(stopPolling)
 </script>
 
 <template>
@@ -55,7 +76,14 @@ onUnmounted(() => {
       <p class="meta">At-a-glance status across the platform's services.</p>
     </div>
 
-    <div v-if="!authenticated" class="empty-state">Please log in to view system health.</div>
+    <div v-if="sessionLoading" class="loading-state">
+      <va-progress-circle indeterminate />
+      <span>Checking your session…</span>
+    </div>
+    <div v-else-if="!isAuthenticated" class="empty-state">
+      <p>Please log in to view system health.</p>
+      <va-button class="mt-4" @click="login()">Sign in</va-button>
+    </div>
     <div v-else-if="loading && !panels.length" class="loading-state">
       <va-progress-circle indeterminate />
       <span>Loading system health…</span>
